@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Kick Clip Creator Settings</title>
+    <link rel="stylesheet" href="../sdpi.css">
+</head>
+<body>
+    <div class="sdpi-wrapper">
+        <div class="sdpi-heading">Kick Clip Creator Settings</div>
+        
+        <div class="sdpi-item">
+            <div class="sdpi-item-label">API Token</div>
+            <input class="sdpi-item-value" 
+                   type="password" 
+                   id="apiToken" 
+                   placeholder="Enter your Kick API token">
+            <div class="sdpi-item-help">
+                Get your API token from Kick's developer settings
+            </div>
+        </div>
+        
+        <div class="sdpi-item">
+            <div class="sdpi-item-label">Channel Slug</div>
+            <input class="sdpi-item-value" 
+                   type="text" 
+                   id="channelSlug" 
+                   placeholder="ticklefitz" 
+                   value="ticklefitz">
+            <div class="sdpi-item-help">
+                The channel name/slug where clips will be created
+            </div>
+        </div>
+        
+        <div class="sdpi-item">
+            <div class="sdpi-item-label">Clip Duration</div>
+            <select class="sdpi-item-value" id="clipDuration">
+                <option value="15">15 seconds</option>
+                <option value="30" selected>30 seconds</option>
+                <option value="60">60 seconds</option>
+            </select>
+        </div>
+        
+        <div class="sdpi-item">
+            <div class="sdpi-item-label">Auto-post to Chat</div>
+            <input type="checkbox" 
+                   id="autoPostToChat" 
+                   class="sdpi-item-value" 
+                   checked>
+            <label for="autoPostToChat">Automatically post clip URL to chat</label>
+        </div>
+        
+        <div class="sdpi-item">
+            <div class="sdpi-item-label">Test Connection</div>
+            <button type="button" 
+                    class="sdpi-item-value" 
+                    id="testConnection">
+                Test API Connection
+            </button>
+            <div id="testResult" class="sdpi-item-help"></div>
+        </div>
+    </div>
+
+    <script src="propertyInspector.js"></script>
+</body>
+</html>
