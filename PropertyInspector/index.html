@@ -10,14 +10,13 @@
         <div class="sdpi-heading">Kick Clip Creator Settings</div>
         
         <div class="sdpi-item">
-            <div class="sdpi-item-label">API Token</div>
-            <input class="sdpi-item-value" 
-                   type="password" 
-                   id="apiToken" 
-                   placeholder="Enter your Kick API token">
-            <div class="sdpi-item-help">
-                Get your API token from Kick's developer settings
-            </div>
+            <div class="sdpi-item-label">Kick Authentication</div>
+            <button type="button" 
+                    class="sdpi-item-value" 
+                    id="authenticateButton">
+                Connect to Kick
+            </button>
+            <div id="authStatus" class="sdpi-item-help">Not connected</div>
         </div>
         
         <div class="sdpi-item">
@@ -55,7 +54,7 @@
             <button type="button" 
                     class="sdpi-item-value" 
                     id="testConnection">
-                Test API Connection
+                Test Authentication
             </button>
             <div id="testResult" class="sdpi-item-help"></div>
         </div>
