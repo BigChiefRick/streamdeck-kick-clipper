@@ -1,16 +1,16 @@
-// Stream Deck Plugin for Kick Clip Creation
+// Stream Deck Plugin for Kick Clip Creation - ES5 Compatible
 // Author: BigChiefRick
 
 console.log('Kick Clip Plugin loading...');
 
-let websocket = null;
-let uuid = null;
+var websocket = null;
+var uuid = null;
 
 // Kick API configuration
-const KICK_API_BASE = 'https://kick.com/api/public/v1';
-const CHANNEL_NAME = 'ticklefitz';
-const CLIENT_ID = '01JZE5QW8R70MSNX3R221D52P3';
-const CLIENT_SECRET = '2a6b062e6f7e02de87c67a8e14e1ecb6e32e31fa03843d2e0df225b0efae8d23';
+var KICK_API_BASE = 'https://kick.com/api/public/v1';
+var CHANNEL_NAME = 'ticklefitz';
+var CLIENT_ID = '01JZE5QW8R70MSNX3R221D52P3';
+var CLIENT_SECRET = '2a6b062e6f7e02de87c67a8e14e1ecb6e32e31fa03843d2e0df225b0efae8d23';
 
 // Connect to Stream Deck
 function connectElgatoStreamDeckSocket(inPort, inUUID, inRegisterEvent, inInfo, inActionInfo) {
@@ -22,7 +22,7 @@ function connectElgatoStreamDeckSocket(inPort, inUUID, inRegisterEvent, inInfo, 
         
         websocket.onopen = function() {
             console.log('WebSocket connected');
-            const json = {
+            var json = {
                 event: inRegisterEvent,
                 uuid: inUUID
             };
@@ -32,9 +32,9 @@ function connectElgatoStreamDeckSocket(inPort, inUUID, inRegisterEvent, inInfo, 
         
         websocket.onmessage = function(evt) {
             console.log('WebSocket message received');
-            const jsonObj = JSON.parse(evt.data);
-            const event = jsonObj.event;
-            const context = jsonObj.context;
+            var jsonObj = JSON.parse(evt.data);
+            var event = jsonObj.event;
+            var context = jsonObj.context;
             
             if (event === 'keyDown') {
                 console.log('Key pressed - starting clip creation');
@@ -66,8 +66,8 @@ function handleKeyDown(context, payload) {
     setTitle(context, 'Starting...');
     
     // Get settings
-    const settings = payload.settings || {};
-    const channelSlug = settings.channelSlug || CHANNEL_NAME;
+    var settings = payload.settings || {};
+    var channelSlug = settings.channelSlug || CHANNEL_NAME;
     
     // Get App Access Token and test API
     setTitle(context, 'Auth...');
@@ -112,7 +112,7 @@ function getAppAccessToken() {
     console.log('Getting app access token...');
     
     return new Promise(function(resolve, reject) {
-        const xhr = new XMLHttpRequest();
+        var xhr = new XMLHttpRequest();
         xhr.open('POST', 'https://id.kick.com/oauth/token', true);
         xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
         
@@ -122,7 +122,7 @@ function getAppAccessToken() {
                 
                 if (xhr.status === 200) {
                     try {
-                        const data = JSON.parse(xhr.responseText);
+                        var data = JSON.parse(xhr.responseText);
                         console.log('App access token obtained successfully');
                         resolve(data.access_token);
                     } catch (error) {
@@ -141,7 +141,7 @@ function getAppAccessToken() {
             reject(new Error('Network error'));
         };
         
-        const params = 'grant_type=client_credentials&client_id=' + CLIENT_ID + '&client_secret=' + CLIENT_SECRET;
+        var params = 'grant_type=client_credentials&client_id=' + CLIENT_ID + '&client_secret=' + CLIENT_SECRET;
         xhr.send(params);
     });
 }
@@ -151,7 +151,7 @@ function testClipCreation(accessToken, channelSlug) {
     console.log('Testing API access for channel:', channelSlug);
     
     return new Promise(function(resolve) {
-        const xhr = new XMLHttpRequest();
+        var xhr = new XMLHttpRequest();
         xhr.open('GET', KICK_API_BASE + '/channels/' + channelSlug, true);
         xhr.setRequestHeader('Authorization', 'Bearer ' + accessToken);
         xhr.setRequestHeader('Accept', 'application/json');
@@ -177,7 +177,7 @@ function testClipCreation(accessToken, channelSlug) {
                 }
                 
                 try {
-                    const channelData = JSON.parse(xhr.responseText);
+                    var channelData = JSON.parse(xhr.responseText);
                     console.log('Channel data received successfully');
                     
                     // For now, just test API connectivity
@@ -212,7 +212,7 @@ function testClipCreation(accessToken, channelSlug) {
 function setTitle(context, title) {
     console.log('Setting title:', title);
     if (websocket && websocket.readyState === 1) {
-        const json = {
+        var json = {
             event: 'setTitle',
             context: context,
             payload: {
@@ -230,5 +230,5 @@ console.log('Plugin script loaded');
 
 // Export for Stream Deck
 if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { connectElgatoStreamDeckSocket };
+    module.exports = { connectElgatoStreamDeckSocket: connectElgatoStreamDeckSocket };
 }
