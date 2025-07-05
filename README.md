@@ -1,4 +1,4 @@
-**# Stream Deck Kick Clip Creator
+# Stream Deck Kick Clip Creator
 
 A Stream Deck plugin that creates 30-second clips on Kick.com and automatically posts the clip URL to chat.
 
@@ -162,4 +162,4 @@ MIT License - see LICENSE file for details.
 - Initial release
 - Basic clip creation and chat posting
 - Property Inspector configuration
-- API connection testing**
+- API connection testing
