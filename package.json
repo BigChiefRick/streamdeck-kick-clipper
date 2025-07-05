@@ -1,0 +1,28 @@
+{
+  "name": "streamdeck-kick-clipper",
+  "version": "1.0.0",
+  "description": "Stream Deck plugin for creating clips on Kick and posting them to chat",
+  "main": "app.js",
+  "scripts": {
+    "build": "node build.js",
+    "install-plugin": "npm run build && npm run copy-to-streamdeck",
+    "copy-to-streamdeck": "xcopy /E /I /Y dist\\* \"%APPDATA%\\Elgato\\StreamDeck\\Plugins\\com.bigchiefrick.kickclipper.sdPlugin\\\"",
+    "dev": "npm run build && npm run copy-to-streamdeck"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/BigChiefRick/streamdeck-kick-clipper.git"
+  },
+  "keywords": [
+    "streamdeck",
+    "kick",
+    "streaming",
+    "clips",
+    "plugin"
+  ],
+  "author": "BigChiefRick",
+  "license": "MIT",
+  "devDependencies": {
+    "fs-extra": "^11.0.0"
+  }
+}
