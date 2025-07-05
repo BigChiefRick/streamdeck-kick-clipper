@@ -7,7 +7,8 @@
     "build": "node build.js",
     "install-plugin": "npm run build && npm run copy-to-streamdeck",
     "copy-to-streamdeck": "xcopy /E /I /Y dist\\* \"%APPDATA%\\Elgato\\StreamDeck\\Plugins\\com.bigchiefrick.kickclipper.sdPlugin\\\"",
-    "dev": "npm run build && npm run copy-to-streamdeck"
+    "dev": "npm run build && npm run copy-to-streamdeck",
+    "oauth": "node oauth-callback-server.js"
   },
   "repository": {
     "type": "git",
