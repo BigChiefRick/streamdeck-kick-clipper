@@ -10,6 +10,17 @@
         <div class="sdpi-heading">Kick Clip Creator Settings</div>
         
         <div class="sdpi-item">
+            <div class="sdpi-item-label">API Token</div>
+            <input class="sdpi-item-value" 
+                   type="password" 
+                   id="apiToken" 
+                   placeholder="Enter your Kick API token">
+            <div class="sdpi-item-help">
+                Get your API token from Kick developer settings
+            </div>
+        </div>
+        
+        <div class="sdpi-item">
             <div class="sdpi-item-label">Channel Slug</div>
             <input class="sdpi-item-value" 
                    type="text" 
@@ -31,22 +42,170 @@
         </div>
         
         <div class="sdpi-item">
-            <div class="sdpi-item-label">Auto-post to Chat</div>
-            <input type="checkbox" 
-                   id="autoPostToChat" 
-                   class="sdpi-item-value" 
-                   checked>
-            <label for="autoPostToChat">Automatically post clip URL to chat</label>
+            <label>
+                <input type="checkbox" 
+                       id="autoPostToChat" 
+                       checked>
+                Automatically post clip URL to chat
+            </label>
         </div>
         
         <div class="sdpi-item">
-            <div class="sdpi-item-label">Status</div>
-            <div id="statusInfo" class="sdpi-item-help">
-                Click the Stream Deck button to test the connection
+            <button id="testConnection">Test Connection</button>
+            <div id="testResult" class="sdpi-item-help"></div>
+        </div>
+        
+        <div class="sdpi-item">
+            <div class="sdpi-item-label">Instructions</div>
+            <div class="sdpi-item-help">
+                1. Get an API token from Kick developer settings<br>
+                2. Enter the token above<br>
+                3. Set your channel name<br>
+                4. Click "Test Connection" to verify<br>
+                5. Press the Stream Deck button to create clips
             </div>
         </div>
     </div>
 
-    <script src="propertyinspector.js"></script>
+    <script>
+        // Property Inspector for Kick Clip Creator - Simplified Version
+        let websocket = null;
+        let uuid = null;
+        let settings = {};
+
+        // Connect to Stream Deck
+        function connectElgatoStreamDeckSocket(inPort, inUUID, inRegisterEvent, inInfo, inActionInfo) {
+            uuid = inUUID;
+            
+            websocket = new WebSocket('ws://localhost:' + inPort);
+            
+            websocket.onopen = function() {
+                const json = {
+                    event: inRegisterEvent,
+                    uuid: inUUID
+                };
+                websocket.send(JSON.stringify(json));
+                requestSettings();
+            };
+            
+            websocket.onmessage = function(evt) {
+                const jsonObj = JSON.parse(evt.data);
+                
+                if (jsonObj.event === 'didReceiveSettings') {
+                    settings = jsonObj.payload.settings || {};
+                    updateUI();
+                } else if (jsonObj.event === 'sendToPropertyInspector') {
+                    handlePluginMessage(jsonObj.payload);
+                }
+            };
+        }
+
+        // Update UI with current settings
+        function updateUI() {
+            document.getElementById('apiToken').value = settings.apiToken || '';
+            document.getElementById('channelSlug').value = settings.channelSlug || 'ticklefitz';
+            document.getElementById('clipDuration').value = settings.clipDuration || 30;
+            document.getElementById('autoPostToChat').checked = settings.autoPostToChat !== false;
+        }
+
+        // Handle messages from plugin
+        function handlePluginMessage(payload) {
+            if (payload.event === 'testResult') {
+                const testResult = document.getElementById('testResult');
+                if (payload.data.success) {
+                    testResult.textContent = '✅ ' + payload.data.message;
+                    testResult.style.color = 'green';
+                } else {
+                    testResult.textContent = '❌ ' + payload.data.message;
+                    testResult.style.color = 'red';
+                }
+            }
+        }
+
+        // Request settings from plugin
+        function requestSettings() {
+            if (websocket && websocket.readyState === 1) {
+                const json = {
+                    event: 'getSettings',
+                    context: uuid
+                };
+                websocket.send(JSON.stringify(json));
+            }
+        }
+
+        // Save settings to plugin
+        function saveSettings() {
+            if (websocket && websocket.readyState === 1) {
+                const json = {
+                    event: 'setSettings',
+                    context: uuid,
+                    payload: settings
+                };
+                websocket.send(JSON.stringify(json));
+            }
+        }
+
+        // Send message to plugin
+        function sendToPlugin(event, data) {
+            if (websocket && websocket.readyState === 1) {
+                const json = {
+                    event: 'sendToPlugin',
+                    context: uuid,
+                    payload: {
+                        event: event,
+                        settings: settings,
+                        ...data
+                    }
+                };
+                websocket.send(JSON.stringify(json));
+            }
+        }
+
+        // Initialize when DOM is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            // API Token input
+            const apiTokenInput = document.getElementById('apiToken');
+            apiTokenInput.addEventListener('input', function() {
+                settings.apiToken = this.value;
+                saveSettings();
+            });
+            
+            // Channel Slug input
+            const channelSlugInput = document.getElementById('channelSlug');
+            channelSlugInput.addEventListener('input', function() {
+                settings.channelSlug = this.value;
+                saveSettings();
+            });
+            
+            // Clip Duration select
+            const clipDurationSelect = document.getElementById('clipDuration');
+            clipDurationSelect.addEventListener('change', function() {
+                settings.clipDuration = parseInt(this.value);
+                saveSettings();
+            });
+            
+            // Auto-post checkbox
+            const autoPostCheckbox = document.getElementById('autoPostToChat');
+            autoPostCheckbox.addEventListener('change', function() {
+                settings.autoPostToChat = this.checked;
+                saveSettings();
+            });
+            
+            // Test connection button
+            const testButton = document.getElementById('testConnection');
+            testButton.addEventListener('click', function() {
+                const testResult = document.getElementById('testResult');
+                testResult.textContent = 'Testing...';
+                testResult.style.color = 'blue';
+                
+                this.disabled = true;
+                setTimeout(() => {
+                    this.disabled = false;
+                }, 3000);
+                
+                sendToPlugin('testConnection');
+            });
+        });
+    </script>
 </body>
 </html>
