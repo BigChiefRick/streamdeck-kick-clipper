@@ -1,0 +1,36 @@
+{
+  "Actions": [
+    {
+      "Icon": "Images/actionIcon",
+      "Name": "Kick Clip Creator",
+      "States": [
+        {
+          "Image": "Images/actionDefaultImage",
+          "TitleAlignment": "middle",
+          "FontSize": "16"
+        }
+      ],
+      "SupportedInMultiActions": true,
+      "Tooltip": "Create a 30-second clip on Kick and post to chat",
+      "UUID": "com.bigchiefrick.kickclipper.createclip",
+      "PropertyInspectorPath": "PropertyInspector/index.html"
+    }
+  ],
+  "SDKVersion": 2,
+  "Author": "BigChiefRick",
+  "CodePath": "app.js",
+  "Description": "Create clips on Kick streaming platform and post clip URLs to chat",
+  "Name": "Kick Clip Creator",
+  "Icon": "Images/pluginIcon",
+  "URL": "https://github.com/BigChiefRick/streamdeck-kick-clipper",
+  "Version": "1.0.0",
+  "OS": [
+    {
+      "Platform": "windows",
+      "MinimumVersion": "10"
+    }
+  ],
+  "Software": {
+    "MinimumVersion": "6.0"
+  }
+}
