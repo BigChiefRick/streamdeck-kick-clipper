@@ -1,73 +1,44 @@
-// Simple script to create placeholder PNG images for Stream Deck plugin
 const fs = require('fs');
 const path = require('path');
 
-// Create a simple PNG header for a solid color image
-function createSimplePNG(width, height, r = 100, g = 100, b = 100) {
-    // This creates a very basic PNG with solid color
-    // For a real implementation, you'd use a proper image library like sharp or canvas
-    
-    // PNG signature
-    const signature = Buffer.from([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]);
-    
-    // IHDR chunk
-    const ihdr = Buffer.alloc(25);
-    ihdr.writeUInt32BE(13, 0); // Length
-    ihdr.write('IHDR', 4);
-    ihdr.writeUInt32BE(width, 8);
-    ihdr.writeUInt32BE(height, 12);
-    ihdr.writeUInt8(8, 16); // Bit depth
-    ihdr.writeUInt8(2, 17); // Color type (RGB)
-    ihdr.writeUInt8(0, 18); // Compression
-    ihdr.writeUInt8(0, 19); // Filter
-    ihdr.writeUInt8(0, 20); // Interlace
-    
-    // Calculate CRC for IHDR
-    const crc = require('crc-32');
-    const ihdrCrc = crc.buf(ihdr.slice(4, 21));
-    ihdr.writeUInt32BE(ihdrCrc >>> 0, 21);
-    
-    // Simple IDAT chunk with solid color
-    const pixelData = Buffer.alloc(width * height * 3);
-    for (let i = 0; i < pixelData.length; i += 3) {
-        pixelData[i] = r;     // Red
-        pixelData[i + 1] = g; // Green
-        pixelData[i + 2] = b; // Blue
-    }
-    
-    // IEND chunk
-    const iend = Buffer.from([0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82]);
-    
-    // Combine all chunks (simplified - real PNG would need proper IDAT compression)
-    return Buffer.concat([signature, ihdr, iend]);
-}
+// Minimal PNG file data (1x1 pixel transparent PNG)
+const minimalPNG = Buffer.from([
+    0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, // PNG signature
+    0x00, 0x00, 0x00, 0x0D, // IHDR length
+    0x49, 0x48, 0x44, 0x52, // IHDR
+    0x00, 0x00, 0x00, 0x01, // Width: 1
+    0x00, 0x00, 0x00, 0x01, // Height: 1
+    0x08, 0x06, 0x00, 0x00, 0x00, // Bit depth, color type, compression, filter, interlace
+    0x1F, 0x15, 0xC4, 0x89, // IHDR CRC
+    0x00, 0x00, 0x00, 0x0A, // IDAT length
+    0x49, 0x44, 0x41, 0x54, // IDAT
+    0x78, 0x9C, 0x63, 0x00, 0x01, 0x00, 0x00, 0x05, 0x00, 0x01, // Compressed data
+    0x0D, 0x0A, 0x2D, 0xB4, // IDAT CRC
+    0x00, 0x00, 0x00, 0x00, // IEND length
+    0x49, 0x45, 0x4E, 0x44, // IEND
+    0xAE, 0x42, 0x60, 0x82  // IEND CRC
+]);
 
-// Create images directory
+// Create Images directory if it doesn't exist
 const imagesDir = path.join(__dirname, 'Images');
 if (!fs.existsSync(imagesDir)) {
     fs.mkdirSync(imagesDir);
 }
 
-console.log('Creating placeholder images...');
-
-// Create simple colored rectangles as placeholders
-const images = [
-    { name: 'actionIcon.png', size: 28, color: [50, 150, 200] },
-    { name: 'actionDefaultImage.png', size: 72, color: [70, 130, 180] },
-    { name: 'pluginIcon.png', size: 28, color: [60, 140, 190] }
+// Create the image files
+const imageFiles = [
+    'actionIcon.png',
+    'actionDefaultImage.png', 
+    'pluginIcon.png'
 ];
 
-images.forEach(img => {
-    const filePath = path.join(imagesDir, img.name);
-    
-    // Create a simple bitmap-style file (not a real PNG, but should work for testing)
-    const simpleImage = Buffer.alloc(100);
-    simpleImage.fill(0x42); // Fill with some data
-    
-    fs.writeFileSync(filePath, simpleImage);
-    console.log(`Created ${img.name} (${img.size}x${img.size})`);
+console.log('Creating real PNG files...');
+
+imageFiles.forEach(filename => {
+    const filePath = path.join(imagesDir, filename);
+    fs.writeFileSync(filePath, minimalPNG);
+    console.log(`✅ Created ${filename} (${minimalPNG.length} bytes)`);
 });
 
-console.log('\n✅ Placeholder images created!');
-console.log('Note: These are basic placeholders. For production, create proper PNG files.');
-console.log('You can replace them with real images later.');
+console.log('\n🎉 Real PNG files created successfully!');
+console.log('Now rebuild and test the plugin.');
