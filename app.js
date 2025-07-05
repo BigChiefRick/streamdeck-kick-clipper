@@ -6,10 +6,9 @@ let uuid = null;
 
 // Kick API configuration
 const KICK_API_BASE = 'https://kick.com/api/public/v1';
-const KICK_OAUTH_BASE = 'https://id.kick.com/oauth';
 const CHANNEL_NAME = 'ticklefitz';
 const CLIENT_ID = '01JZE5QW8R70MSNX3R221D52P3';
-const REDIRECT_URI = 'http://127.0.0.1:8080/callback';
+const CLIENT_SECRET = '2a6b062e6f7e02de87c67a8e14e1ecb6e32e31fa03843d2e0df225b0efae8d23';
 
 // Connect to Stream Deck
 function connectElgatoStreamDeckSocket(inPort, inUUID, inRegisterEvent, inInfo, inActionInfo) {
@@ -47,34 +46,33 @@ async function handleKeyDown(context, payload) {
         
         // Get settings
         const settings = payload.settings || {};
-        const accessToken = settings.accessToken;
         const channelSlug = settings.channelSlug || CHANNEL_NAME;
         
+        // Get App Access Token
+        setTitle(context, 'Auth...');
+        const accessToken = await getAppAccessToken();
+        
         if (!accessToken) {
-            setTitle(context, 'No Auth');
+            setTitle(context, 'Auth Failed');
             setTimeout(() => setTitle(context, 'Kick Clip'), 2000);
             return;
         }
         
-        // Check if token is expired and refresh if needed
-        const validToken = await ensureValidToken(context, settings);
-        if (!validToken) {
-            setTitle(context, 'Auth Error');
-            setTimeout(() => setTitle(context, 'Kick Clip'), 2000);
-            return;
+        setTitle(context, 'Testing...');
+        
+        // Test API access and check for clip endpoints
+        const result = await testClipCreation(accessToken, channelSlug);
+        
+        if (result.success) {
+            setTitle(context, 'Success!');
+        } else {
+            setTitle(context, result.message || 'Failed');
         }
         
-        setTitle(context, 'Creating...');
-        
-        // Create clip (note: clip endpoint may not be available yet in Kick API)
-        // For now, we'll just test the authentication and post a message
-        await testClipCreation(validToken, channelSlug);
-        
-        setTitle(context, 'Success!');
-        setTimeout(() => setTitle(context, 'Kick Clip'), 2000);
+        setTimeout(() => setTitle(context, 'Kick Clip'), 3000);
         
     } catch (error) {
-        console.error('Error creating clip:', error);
+        console.error('Error in clip creation:', error);
         setTitle(context, 'Error');
         setTimeout(() => setTitle(context, 'Kick Clip'), 2000);
     }
@@ -85,57 +83,18 @@ function handleWillAppear(context, payload) {
     setTitle(context, 'Kick Clip');
 }
 
-// Ensure we have a valid access token
-async function ensureValidToken(context, settings) {
+// Get App Access Token
+async function getAppAccessToken() {
     try {
-        // Check if token exists and is not expired
-        if (settings.accessToken && settings.tokenExpiresAt) {
-            const expiresAt = new Date(settings.tokenExpiresAt);
-            const now = new Date();
-            
-            // If token expires within 5 minutes, refresh it
-            if (expiresAt.getTime() - now.getTime() > 5 * 60 * 1000) {
-                return settings.accessToken;
-            }
-        }
-        
-        // Try to refresh token if we have a refresh token
-        if (settings.refreshToken) {
-            const newTokens = await refreshAccessToken(settings.refreshToken);
-            if (newTokens) {
-                // Save new tokens
-                const newSettings = {
-                    ...settings,
-                    accessToken: newTokens.access_token,
-                    refreshToken: newTokens.refresh_token,
-                    tokenExpiresAt: new Date(Date.now() + newTokens.expires_in * 1000).toISOString()
-                };
-                
-                saveSettings(context, newSettings);
-                return newTokens.access_token;
-            }
-        }
-        
-        return null;
-        
-    } catch (error) {
-        console.error('Error ensuring valid token:', error);
-        return null;
-    }
-}
-
-// Refresh access token using refresh token
-async function refreshAccessToken(refreshToken) {
-    try {
-        const response = await fetch(`${KICK_OAUTH_BASE}/token`, {
+        const response = await fetch('https://id.kick.com/oauth/token', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
             },
             body: new URLSearchParams({
-                grant_type: 'refresh_token',
+                grant_type: 'client_credentials',
                 client_id: CLIENT_ID,
-                refresh_token: refreshToken
+                client_secret: CLIENT_SECRET
             })
         });
         
@@ -143,52 +102,153 @@ async function refreshAccessToken(refreshToken) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
         
-        return await response.json();
+        const data = await response.json();
+        console.log('App access token obtained successfully');
+        return data.access_token;
         
     } catch (error) {
-        console.error('Error refreshing token:', error);
-        throw error;
+        console.error('Error getting app access token:', error);
+        return null;
     }
 }
 
-// Test clip creation (placeholder since clip endpoint may not be available)
+// Test clip creation and API access
 async function testClipCreation(accessToken, channelSlug) {
     try {
-        // First, test if we can access user info to verify token works
-        const userResponse = await fetch(`${KICK_API_BASE}/users`, {
+        // First, test if we can access channel info
+        console.log(`Testing API access for channel: ${channelSlug}`);
+        
+        const channelResponse = await fetch(`${KICK_API_BASE}/channels/${channelSlug}`, {
             headers: {
                 'Authorization': `Bearer ${accessToken}`,
                 'Accept': 'application/json'
             }
         });
         
-        if (!userResponse.ok) {
-            throw new Error(`User API error! status: ${userResponse.status}`);
+        console.log(`Channel API response: ${channelResponse.status}`);
+        
+        if (channelResponse.status === 403) {
+            return {
+                success: false,
+                message: 'API 403'
+            };
         }
         
-        // TODO: Replace this with actual clip creation once the endpoint is available
-        // For now, we'll just verify the authentication works
-        console.log('Authentication successful - ready for clip creation when API supports it');
+        if (!channelResponse.ok) {
+            return {
+                success: false,
+                message: `API ${channelResponse.status}`
+            };
+        }
         
-        return { success: true };
+        const channelData = await channelResponse.json();
+        console.log('Channel data received:', {
+            slug: channelData.slug,
+            user_id: channelData.user_id,
+            is_live: channelData.livestream?.is_live || false
+        });
+        
+        // Try to find clip creation endpoint
+        // Note: Clip endpoint might not be publicly available yet
+        try {
+            console.log('Testing clip creation endpoint...');
+            const clipResponse = await fetch(`${KICK_API_BASE}/channels/${channelSlug}/clips`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    duration: 30,
+                    title: `Test clip from Stream Deck - ${new Date().toLocaleString()}`
+                })
+            });
+            
+            console.log(`Clip creation response: ${clipResponse.status}`);
+            
+            if (clipResponse.ok) {
+                const clipData = await clipResponse.json();
+                console.log('✅ Clip created successfully!', clipData);
+                
+                // Try to post to chat if clip was created
+                if (clipData.url || clipData.clip_url) {
+                    await postClipToChat(accessToken, channelSlug, clipData.url || clipData.clip_url);
+                }
+                
+                return {
+                    success: true,
+                    message: 'Clip OK!'
+                };
+            } else {
+                const errorText = await clipResponse.text();
+                console.log('Clip creation failed:', errorText);
+                
+                if (clipResponse.status === 404) {
+                    return {
+                        success: false,
+                        message: 'No Clips API'
+                    };
+                } else if (clipResponse.status === 403) {
+                    return {
+                        success: false,
+                        message: 'Clips 403'
+                    };
+                } else {
+                    return {
+                        success: false,
+                        message: `Clips ${clipResponse.status}`
+                    };
+                }
+            }
+        } catch (clipError) {
+            console.log('Clip endpoint test failed:', clipError.message);
+            return {
+                success: false,
+                message: 'No Clips'
+            };
+        }
         
     } catch (error) {
         console.error('Error in test clip creation:', error);
-        throw error;
+        return {
+            success: false,
+            message: 'Error'
+        };
     }
 }
 
-// Utility function to save settings
-function saveSettings(context, settings) {
-    if (websocket && websocket.readyState === 1) {
-        const json = {
-            event: 'setSettings',
-            context: context,
-            payload: settings
-        };
-        websocket.send(JSON.stringify(json));
+// Post clip URL to chat (if chat API is available)
+async function postClipToChat(accessToken, channelSlug, clipUrl) {
+    try {
+        console.log('Attempting to post clip to chat...');
+        
+        // This is speculative - chat API might not be available with App tokens
+        const chatResponse = await fetch(`${KICK_API_BASE}/channels/${channelSlug}/chatroom/messages`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({
+                content: `🎬 New clip created: ${clipUrl}`,
+                type: 'message'
+            })
+        });
+        
+        if (chatResponse.ok) {
+            console.log('✅ Posted clip to chat successfully');
+        } else {
+            console.log('Chat posting failed:', chatResponse.status);
+        }
+        
+    } catch (error) {
+        console.log('Chat posting error:', error.message);
     }
 }
+
+// Utility function to set button title
 function setTitle(context, title) {
     if (websocket && websocket.readyState === 1) {
         const json = {
