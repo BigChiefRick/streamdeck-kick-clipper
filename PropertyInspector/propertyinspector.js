@@ -1,4 +1,4 @@
-// Property Inspector for Kick Clip Creator1
+// Property Inspector for Kick Clip Creator
 let websocket = null;
 let uuid = null;
 let actionInfo = null;
@@ -147,10 +147,4 @@ async function testConnection() {
             testResult.style.color = 'red';
         }
     } catch (error) {
-        testResult.textContent = `❌ Error: ${error.message}`;
-        testResult.style.color = 'red';
-    } finally {
-        testButton.disabled = false;
-        testButton.textContent = 'Test API Connection';
-    }
-}
+        testResult.
