@@ -1,6 +1,8 @@
 // Stream Deck Plugin for Kick Clip Creation
 // Author: BigChiefRick
 
+console.log('Kick Clip Plugin loading...');
+
 let websocket = null;
 let uuid = null;
 
@@ -12,86 +14,112 @@ const CLIENT_SECRET = '2a6b062e6f7e02de87c67a8e14e1ecb6e32e31fa03843d2e0df225b0e
 
 // Connect to Stream Deck
 function connectElgatoStreamDeckSocket(inPort, inUUID, inRegisterEvent, inInfo, inActionInfo) {
+    console.log('connectElgatoStreamDeckSocket called');
     uuid = inUUID;
     
-    websocket = new WebSocket('ws://localhost:' + inPort);
-    
-    websocket.onopen = function() {
-        const json = {
-            event: inRegisterEvent,
-            uuid: inUUID
-        };
-        websocket.send(JSON.stringify(json));
-    };
-    
-    websocket.onmessage = function(evt) {
-        const jsonObj = JSON.parse(evt.data);
-        const event = jsonObj.event;
-        const action = jsonObj.action;
-        const context = jsonObj.context;
+    try {
+        websocket = new WebSocket('ws://localhost:' + inPort);
         
-        if (event === 'keyDown') {
-            handleKeyDown(context, jsonObj.payload);
-        } else if (event === 'willAppear') {
-            handleWillAppear(context, jsonObj.payload);
-        }
-    };
+        websocket.onopen = function() {
+            console.log('WebSocket connected');
+            const json = {
+                event: inRegisterEvent,
+                uuid: inUUID
+            };
+            websocket.send(JSON.stringify(json));
+            console.log('Registration sent');
+        };
+        
+        websocket.onmessage = function(evt) {
+            console.log('WebSocket message received');
+            const jsonObj = JSON.parse(evt.data);
+            const event = jsonObj.event;
+            const context = jsonObj.context;
+            
+            if (event === 'keyDown') {
+                console.log('Key pressed - starting clip creation');
+                handleKeyDown(context, jsonObj.payload);
+            } else if (event === 'willAppear') {
+                console.log('Will appear event');
+                handleWillAppear(context, jsonObj.payload);
+            }
+        };
+        
+        websocket.onerror = function(error) {
+            console.error('WebSocket error:', error);
+        };
+        
+        websocket.onclose = function() {
+            console.log('WebSocket closed');
+        };
+        
+    } catch (error) {
+        console.error('Error creating WebSocket:', error);
+    }
 }
 
 // Handle key press
-async function handleKeyDown(context, payload) {
-    try {
-        // Show processing state
-        setTitle(context, 'Starting...');
-        
-        // Get settings
-        const settings = payload.settings || {};
-        const channelSlug = settings.channelSlug || CHANNEL_NAME;
-        
-        // Get App Access Token
-        setTitle(context, 'Auth...');
-        const accessToken = await getAppAccessToken();
-        
-        if (!accessToken) {
-            setTitle(context, 'Auth Failed');
-            setTimeout(() => setTitle(context, 'Kick Clip'), 2000);
-            return;
-        }
-        
-        setTitle(context, 'Testing...');
-        
-        // Test API access and check for clip endpoints
-        const result = await testClipCreation(accessToken, channelSlug);
-        
-        if (result.success) {
-            setTitle(context, 'Success!');
-        } else {
-            setTitle(context, result.message || 'Failed');
-        }
-        
-        setTimeout(() => setTitle(context, 'Kick Clip'), 3000);
-        
-    } catch (error) {
-        console.error('Error in clip creation:', error);
-        setTitle(context, 'Error');
-        setTimeout(() => setTitle(context, 'Kick Clip'), 2000);
-    }
+function handleKeyDown(context, payload) {
+    console.log('handleKeyDown called');
+    
+    // Show processing state
+    setTitle(context, 'Starting...');
+    
+    // Get settings
+    const settings = payload.settings || {};
+    const channelSlug = settings.channelSlug || CHANNEL_NAME;
+    
+    // Get App Access Token and test API
+    setTitle(context, 'Auth...');
+    
+    getAppAccessToken()
+        .then(function(accessToken) {
+            if (!accessToken) {
+                setTitle(context, 'Auth Failed');
+                setTimeout(function() { setTitle(context, 'Kick Clip'); }, 2000);
+                return;
+            }
+            
+            console.log('Got access token, testing API...');
+            setTitle(context, 'Testing...');
+            
+            return testClipCreation(accessToken, channelSlug);
+        })
+        .then(function(result) {
+            if (result && result.success) {
+                setTitle(context, 'Success!');
+            } else {
+                setTitle(context, result ? result.message : 'Failed');
+            }
+            
+            setTimeout(function() { setTitle(context, 'Kick Clip'); }, 3000);
+        })
+        .catch(function(error) {
+            console.error('Error in clip creation:', error);
+            setTitle(context, 'Error');
+            setTimeout(function() { setTitle(context, 'Kick Clip'); }, 2000);
+        });
 }
 
 // Handle will appear event
 function handleWillAppear(context, payload) {
+    console.log('handleWillAppear called');
     setTitle(context, 'Kick Clip');
 }
 
-// Get App Access Token using XMLHttpRequest (fetch not available in Stream Deck)
+// Get App Access Token using XMLHttpRequest
 function getAppAccessToken() {
-    return new Promise((resolve, reject) => {
+    console.log('Getting app access token...');
+    
+    return new Promise(function(resolve, reject) {
         const xhr = new XMLHttpRequest();
         xhr.open('POST', 'https://id.kick.com/oauth/token', true);
         xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
         
         xhr.onreadystatechange = function() {
             if (xhr.readyState === 4) {
+                console.log('Token request completed with status:', xhr.status);
+                
                 if (xhr.status === 200) {
                     try {
                         const data = JSON.parse(xhr.responseText);
@@ -103,7 +131,7 @@ function getAppAccessToken() {
                     }
                 } else {
                     console.error('Token request failed:', xhr.status, xhr.responseText);
-                    reject(new Error(`HTTP error! status: ${xhr.status}`));
+                    reject(new Error('HTTP error! status: ' + xhr.status));
                 }
             }
         };
@@ -113,25 +141,24 @@ function getAppAccessToken() {
             reject(new Error('Network error'));
         };
         
-        const params = `grant_type=client_credentials&client_id=${CLIENT_ID}&client_secret=${CLIENT_SECRET}`;
+        const params = 'grant_type=client_credentials&client_id=' + CLIENT_ID + '&client_secret=' + CLIENT_SECRET;
         xhr.send(params);
     });
 }
 
-// Test clip creation and API access using XMLHttpRequest
+// Test clip creation and API access
 function testClipCreation(accessToken, channelSlug) {
-    return new Promise((resolve) => {
-        // First, test if we can access channel info
-        console.log(`Testing API access for channel: ${channelSlug}`);
-        
+    console.log('Testing API access for channel:', channelSlug);
+    
+    return new Promise(function(resolve) {
         const xhr = new XMLHttpRequest();
-        xhr.open('GET', `${KICK_API_BASE}/channels/${channelSlug}`, true);
-        xhr.setRequestHeader('Authorization', `Bearer ${accessToken}`);
+        xhr.open('GET', KICK_API_BASE + '/channels/' + channelSlug, true);
+        xhr.setRequestHeader('Authorization', 'Bearer ' + accessToken);
         xhr.setRequestHeader('Accept', 'application/json');
         
         xhr.onreadystatechange = function() {
             if (xhr.readyState === 4) {
-                console.log(`Channel API response: ${xhr.status}`);
+                console.log('Channel API response:', xhr.status);
                 
                 if (xhr.status === 403) {
                     resolve({
@@ -144,23 +171,19 @@ function testClipCreation(accessToken, channelSlug) {
                 if (xhr.status !== 200) {
                     resolve({
                         success: false,
-                        message: `API ${xhr.status}`
+                        message: 'API ' + xhr.status
                     });
                     return;
                 }
                 
                 try {
                     const channelData = JSON.parse(xhr.responseText);
-                    console.log('Channel data received:', {
-                        slug: channelData.slug,
-                        user_id: channelData.user_id,
-                        is_live: channelData.livestream?.is_live || false
-                    });
+                    console.log('Channel data received successfully');
                     
-                    // For now, just test API connectivity - clip endpoints likely not available
+                    // For now, just test API connectivity
                     resolve({
                         success: true,
-                        message: 'API Works!'
+                        message: 'Works!'
                     });
                     
                 } catch (error) {
@@ -185,44 +208,9 @@ function testClipCreation(accessToken, channelSlug) {
     });
 }
 
-// Post clip URL to chat (if chat API is available) using XMLHttpRequest
-function postClipToChat(accessToken, channelSlug, clipUrl) {
-    return new Promise((resolve) => {
-        console.log('Attempting to post clip to chat...');
-        
-        const xhr = new XMLHttpRequest();
-        xhr.open('POST', `${KICK_API_BASE}/channels/${channelSlug}/chatroom/messages`, true);
-        xhr.setRequestHeader('Authorization', `Bearer ${accessToken}`);
-        xhr.setRequestHeader('Content-Type', 'application/json');
-        xhr.setRequestHeader('Accept', 'application/json');
-        
-        xhr.onreadystatechange = function() {
-            if (xhr.readyState === 4) {
-                if (xhr.status === 200) {
-                    console.log('✅ Posted clip to chat successfully');
-                } else {
-                    console.log('Chat posting failed:', xhr.status);
-                }
-                resolve();
-            }
-        };
-        
-        xhr.onerror = function() {
-            console.log('Chat posting error');
-            resolve();
-        };
-        
-        const message = JSON.stringify({
-            content: `🎬 New clip created: ${clipUrl}`,
-            type: 'message'
-        });
-        
-        xhr.send(message);
-    });
-}
-
 // Utility function to set button title
 function setTitle(context, title) {
+    console.log('Setting title:', title);
     if (websocket && websocket.readyState === 1) {
         const json = {
             event: 'setTitle',
@@ -233,8 +221,12 @@ function setTitle(context, title) {
             }
         };
         websocket.send(JSON.stringify(json));
+    } else {
+        console.log('WebSocket not ready for setTitle');
     }
 }
+
+console.log('Plugin script loaded');
 
 // Export for Stream Deck
 if (typeof module !== 'undefined' && module.exports) {
