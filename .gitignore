@@ -1,0 +1,7 @@
+node_modules/
+dist/
+*.log
+tokens.json
+secrets.json
+com.bigchiefrick.kickclipper.sdPlugin/bin/
+com.bigchiefrick.kickclipper.sdPlugin/logs/

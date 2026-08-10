@@ -1,14 +1,19 @@
 {
   "name": "streamdeck-kick-clipper",
-  "version": "1.0.0",
-  "description": "Stream Deck plugin for creating clips on Kick and posting them to chat",
-  "main": "app.js",
+  "version": "1.1.0",
+  "description": "Create the previous 30 seconds as a Kick clip and post the clip URL to chat.",
+  "type": "module",
   "scripts": {
-    "build": "node build.js",
-    "install-plugin": "npm run build && npm run copy-to-streamdeck",
-    "copy-to-streamdeck": "xcopy /E /I /Y dist\\* \"%APPDATA%\\Elgato\\StreamDeck\\Plugins\\com.bigchiefrick.kickclipper.sdPlugin\\\"",
-    "dev": "npm run build && npm run copy-to-streamdeck",
-    "oauth": "node oauth-callback-server.js"
+    "assets": "node scripts/generate-assets.mjs",
+    "build": "npm run assets && rolldown -c rolldown.config.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test tests/*.test.ts",
+    "validate": "npx --yes --package @elgato/cli@1.7.4 streamdeck validate com.bigchiefrick.kickclipper.sdPlugin --no-update-check",
+    "pack": "npm run pack:plugin && npm run pack:extension",
+    "pack:plugin": "npm run build && npx --yes --package @elgato/cli@1.7.4 streamdeck pack com.bigchiefrick.kickclipper.sdPlugin --output dist --force --no-update-check",
+    "pack:extension": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package-extension.ps1",
+    "link": "npx --yes --package @elgato/cli@1.7.4 streamdeck link com.bigchiefrick.kickclipper.sdPlugin",
+    "restart": "npx --yes --package @elgato/cli@1.7.4 streamdeck restart com.bigchiefrick.kickclipper"
   },
   "repository": {
     "type": "git",
@@ -19,11 +24,24 @@
     "kick",
     "streaming",
     "clips",
-    "plugin"
+    "moderation"
   ],
   "author": "BigChiefRick",
   "license": "MIT",
+  "dependencies": {
+    "@elgato/streamdeck": "^2.1.0",
+    "ws": "^8.18.3"
+  },
   "devDependencies": {
-    "fs-extra": "^11.0.0"
+    "@tsconfig/node20": "^20.1.2",
+    "@types/node": "^24.2.0",
+    "@types/ws": "^8.18.1",
+    "rolldown": "^1.0.0-rc.6",
+    "sharp": "^0.35.3",
+    "tsx": "^4.20.3",
+    "typescript": "^5.9.2"
+  },
+  "engines": {
+    "node": ">=24"
   }
 }

@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <title>Kick Clip Creator Settings</title>
+    <meta charset="utf-8" />
+    <script src="sdpi-components.js"></script>
+    <style>
+      .note { color: #b8b8b8; font: 11px/1.45 Arial, sans-serif; margin: 8px 12px 14px; }
+      .note strong { color: #ffffff; }
+      .note code { color: #53fc18; }
+      .note a { color: #53fc18; }
+    </style>
+  </head>
+  <body>
+    <p class="note">
+      <strong>One press:</strong> creates the previous 30 seconds and posts the clip URL to chat
+      through your signed-in Kick browser session.
+    </p>
+
+    <sdpi-item label="Channel">
+      <sdpi-textfield setting="channelSlug" default="ticklefitz" placeholder="ticklefitz"></sdpi-textfield>
+    </sdpi-item>
+
+    <sdpi-item label="Clip title">
+      <sdpi-textfield setting="clipTitle" placeholder="Uses the live stream title when blank"></sdpi-textfield>
+    </sdpi-item>
+
+    <p class="note">
+      Install the included browser companion, keep a signed-in <code>kick.com</code> tab available,
+      and leave the browser running. No Kick password, cookie, token, Client ID, or Client Secret is
+      read or stored by the plugin. <a href="https://github.com/BigChiefRick/streamdeck-kick-clipper#setup">Setup guide</a>
+    </p>
+  </body>
+</html>

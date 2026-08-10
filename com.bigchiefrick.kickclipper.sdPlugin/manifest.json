@@ -1,0 +1,48 @@
+{
+  "$schema": "https://schemas.elgato.com/streamdeck/plugins/manifest.json",
+  "Name": "Kick Clip Creator",
+  "Version": "1.1.0.0",
+  "Author": "BigChiefRick",
+  "Actions": [
+    {
+      "Name": "Clip Previous 30s",
+      "UUID": "com.bigchiefrick.kickclipper.createclip",
+      "Icon": "imgs/actions/clip/icon",
+      "Tooltip": "Create a clip from the previous 30 seconds and post its URL to Kick chat.",
+      "PropertyInspectorPath": "ui/settings.html",
+      "Controllers": [
+        "Keypad"
+      ],
+      "DisableCaching": true,
+      "UserTitleEnabled": false,
+      "States": [
+        {
+          "Image": "imgs/actions/clip/key",
+          "ShowTitle": false
+        }
+      ],
+      "SupportedInMultiActions": false
+    }
+  ],
+  "Category": "Kick Clip Creator",
+  "CategoryIcon": "imgs/plugin/category-icon",
+  "CodePath": "bin/plugin.js",
+  "Description": "Create the previous 30 seconds as a Kick clip and post the URL to channel chat.",
+  "Icon": "imgs/plugin/marketplace",
+  "SDKVersion": 3,
+  "Software": {
+    "MinimumVersion": "7.1"
+  },
+  "OS": [
+    {
+      "Platform": "windows",
+      "MinimumVersion": "10"
+    }
+  ],
+  "Nodejs": {
+    "Version": "24"
+  },
+  "SupportURL": "https://github.com/BigChiefRick/streamdeck-kick-clipper/issues",
+  "URL": "https://github.com/BigChiefRick/streamdeck-kick-clipper",
+  "UUID": "com.bigchiefrick.kickclipper"
+}
