@@ -78,6 +78,11 @@ function sendResult(id, result) {
   socket.send(JSON.stringify({ id, type: "result", ...result }));
 }
 
+function sendProgress(id, stage, message) {
+  if (!bridgeConnected()) return;
+  socket.send(JSON.stringify({ id, type: "progress", stage, message }));
+}
+
 function channelSlugFromTab(tab, expectedSlug) {
   if (!tab.url) return false;
   try {
@@ -129,8 +134,10 @@ async function handleClipCommand(message) {
     return { status: "error", message: "The Stream Deck action has an invalid Kick channel." };
   }
 
+  sendProgress(message.id, "command-received", `channel=${channelSlug}`);
   const tab = await findOrOpenChannelTab(channelSlug);
   if (!tab.id) return { status: "error", message: "No usable Kick browser tab was found." };
+  sendProgress(message.id, "channel-tab-ready", `channel=${channelSlug}`);
 
   const injection = await chrome.scripting.executeScript({
     target: { tabId: tab.id },
@@ -138,8 +145,36 @@ async function handleClipCommand(message) {
     args: [{ channelSlug, duration: 30, title: String(message.title || "").trim() }],
     func: async (command) => {
       const sleep = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
-      const elementValue = (element) => String(element?.value || element?.getAttribute?.("value") || element?.textContent || "").trim();
-      const shareSelector = '[data-testid="clip-share-url"]';
+      const requestJson = async (url, options) => {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 15_000);
+        try {
+          const response = await fetch(url, {
+            credentials: "include",
+            headers: {
+              Accept: "application/json",
+              "Content-Type": "application/json",
+              "X-Requested-With": "XMLHttpRequest"
+            },
+            signal: controller.signal,
+            ...options
+          });
+          const text = await response.text();
+          let payload;
+          try {
+            payload = text ? JSON.parse(text) : null;
+          } catch {
+            payload = null;
+          }
+          if (!response.ok) {
+            const detail = payload?.message || payload?.error || text.slice(0, 160) || response.statusText;
+            throw new Error(`Kick request failed (${response.status}): ${detail}`);
+          }
+          return payload;
+        } finally {
+          clearTimeout(timeout);
+        }
+      };
 
       try {
         const response = await fetch(`/api/v2/channels/${encodeURIComponent(command.channelSlug)}`, {
@@ -161,63 +196,78 @@ async function handleClipCommand(message) {
           return { status: "offline", message: `${command.channelSlug} is offline.` };
         }
 
-        const priorUrls = new Set(
-          Array.from(document.querySelectorAll(shareSelector))
-            .map(elementValue)
-            .filter((value) => value.includes("/clips/"))
-        );
-        const source = {
-          type: "livestream",
-          streamSlug: livestream.slug || command.channelSlug
-        };
-        if (livestream.vod_id) source.webVideoId = livestream.vod_id;
-
         const clipTitle = String(command.title || livestream.session_title || "").trim().slice(0, 50);
-        const detail = { mode: "command", source, duration: command.duration, title: clipTitle };
-        window.dispatchEvent(new CustomEvent("openClipCreator", { detail }));
+        const streamSlug = String(livestream.slug || "").trim();
+        if (!streamSlug) {
+          return { status: "error", message: "Kick did not return a live stream identifier." };
+        }
 
-        const clipDeadline = Date.now() + 50_000;
-        let shareElement;
-        let clipUrl = "";
-        while (Date.now() < clipDeadline) {
-          const candidates = Array.from(document.querySelectorAll(shareSelector));
-          shareElement = candidates.find((candidate) => {
-            const value = elementValue(candidate);
-            return value.includes("/clips/") && !priorUrls.has(value);
-          });
-          if (shareElement) {
-            clipUrl = elementValue(shareElement);
-            break;
+        // Use the same live-clip endpoints shipped in Kick's current web app.
+        // This avoids the interactive creator dialog and mirrors the direct
+        // create-then-share behavior of mature Stream Deck clip plugins.
+        const initiated = await requestJson(
+          `/api/internal/v1/livestreams/${encodeURIComponent(streamSlug)}/clips`,
+          { method: "POST", body: JSON.stringify({ duration: 180 }) }
+        );
+        const temporaryClip = initiated?.data || initiated;
+        const clipId = String(temporaryClip?.id || "").trim();
+        const sourceDuration = Number(temporaryClip?.source_duration);
+        if (!clipId || !Number.isFinite(sourceDuration)) {
+          return { status: "error", message: "Kick returned an invalid live clip initiation response." };
+        }
+
+        const finalized = await requestJson(
+          `/api/internal/v1/livestreams/${encodeURIComponent(streamSlug)}/clips/${encodeURIComponent(clipId)}/finalize`,
+          {
+            method: "POST",
+            body: JSON.stringify({
+              duration: command.duration,
+              start_time: Math.max(0, sourceDuration - command.duration),
+              title: clipTitle
+            })
           }
-          await sleep(250);
+        );
+        const finalClip = finalized?.data || finalized;
+        const finalClipId = String(finalClip?.id || "").trim();
+        if (!finalClipId) {
+          return { status: "error", message: "Kick returned an invalid finalized clip response." };
         }
 
-        if (!shareElement || !clipUrl) {
-          return {
-            status: "error",
-            message: "Kick did not produce a clip. Confirm this browser is signed in and allowed to clip the channel."
-          };
+        const clipUrl = `https://kick.com/${command.channelSlug}/clips/${finalClipId}`;
+        const chatInput = document.querySelector('[data-testid="chat-input"][contenteditable="true"]');
+        const chatButton = document.querySelector("#send-message-button");
+        if (!chatInput || !chatButton || chatButton.disabled) {
+          return { status: "chat-error", clipUrl, message: "The clip was created, but the Kick chat input was unavailable." };
         }
+
+        chatInput.focus();
+        const selection = window.getSelection();
+        const range = document.createRange();
+        range.selectNodeContents(chatInput);
+        selection?.removeAllRanges();
+        selection?.addRange(range);
+        document.execCommand("delete", false);
+        const inserted = document.execCommand("insertText", false, clipUrl);
+        if (!inserted || String(chatInput.textContent || "").trim() !== clipUrl) {
+          chatInput.textContent = clipUrl;
+          chatInput.dispatchEvent(new InputEvent("input", {
+            bubbles: true,
+            inputType: "insertText",
+            data: clipUrl
+          }));
+        }
+        await sleep(100);
+        chatButton.click();
 
         const chatDeadline = Date.now() + 8_000;
-        let chatButton;
         while (Date.now() < chatDeadline) {
-          let container = shareElement.closest('[role="dialog"]') || shareElement.closest("dialog") || shareElement.parentElement;
-          for (let depth = 0; container && depth < 8 && !chatButton; depth += 1, container = container.parentElement) {
-            chatButton = Array.from(container.querySelectorAll("button"))
-              .find((button) => button.textContent?.trim().toLowerCase() === "chat");
+          const chatroom = document.querySelector('[data-testid="chatroom-messages"]');
+          if (chatroom?.textContent?.includes(clipUrl)) {
+            return { status: "success", clipUrl };
           }
-          if (chatButton) break;
           await sleep(200);
         }
-
-        if (!chatButton || chatButton.disabled) {
-          return { status: "chat-error", clipUrl, message: "The clip was created, but Kick's Chat button was unavailable." };
-        }
-
-        chatButton.click();
-        await sleep(750);
-        return { status: "success", clipUrl };
+        return { status: "chat-error", clipUrl, message: "The clip was created, but the link was not confirmed in Kick chat." };
       } catch (error) {
         return {
           status: "error",
@@ -227,7 +277,13 @@ async function handleClipCommand(message) {
     }
   });
 
-  return injection[0]?.result || { status: "error", message: "The Kick tab returned no clip result." };
+  const result = injection[0]?.result || { status: "error", message: "The Kick tab returned no clip result." };
+  sendProgress(
+    message.id,
+    result.status === "success" ? "chat-posted" : "browser-result",
+    result.clipUrl || result.message
+  );
+  return result;
 }
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {

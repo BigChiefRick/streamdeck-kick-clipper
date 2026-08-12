@@ -16,8 +16,16 @@ export type ClipBridgeResult = {
 type BridgeMessage = {
   id?: string;
   type?: string;
+  version?: string;
+  stage?: string;
   status?: ClipBridgeResult["status"];
   clipUrl?: string;
+  message?: string;
+};
+
+export type BridgeProgress = {
+  id?: string;
+  stage: string;
   message?: string;
 };
 
@@ -41,7 +49,10 @@ export class BrowserBridge {
     timer: NodeJS.Timeout;
   }>();
 
-  constructor(private readonly port = 17777) {}
+  constructor(
+    private readonly port = 17777,
+    private readonly onProgress: (progress: BridgeProgress) => void = () => {}
+  ) {}
 
   start(): Promise<void> {
     if (this.server) return Promise.resolve();
@@ -97,9 +108,10 @@ export class BrowserBridge {
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
         this.pending.delete(id);
-        reject(new BrowserBridgeError("The browser did not finish the clip within 60 seconds."));
-      }, 60_000);
+        reject(new BrowserBridgeError("Kick did not finish and post the clip within 45 seconds."));
+      }, 45_000);
       this.pending.set(id, { resolve, reject, timer });
+      this.onProgress({ id, stage: "request-sent", message: `channel=${command.channelSlug}` });
       this.companion!.send(JSON.stringify({ id, type: "clip", ...command }));
     });
   }
@@ -114,11 +126,19 @@ export class BrowserBridge {
     if (message.type === "hello") {
       if (this.companion && this.companion !== socket) this.companion.close(1000, "Replaced by a newer companion");
       this.companion = socket;
+      this.onProgress({
+        stage: "companion-connected",
+        message: `version=${message.version || "unknown"}`
+      });
       socket.send(JSON.stringify({ type: "hello-ack" }));
       return;
     }
     if (message.type === "ping") {
       socket.send(JSON.stringify({ type: "pong" }));
+      return;
+    }
+    if (message.type === "progress" && message.stage) {
+      this.onProgress({ id: message.id, stage: message.stage, message: message.message });
       return;
     }
     if (message.type !== "result" || !message.id || !message.status) return;

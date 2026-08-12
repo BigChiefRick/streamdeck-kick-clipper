@@ -4,7 +4,11 @@ import { CreateClipAction } from "./actions/create-clip";
 import { BrowserBridge } from "./bridge";
 
 streamDeck.logger.setLevel("info");
-const bridge = new BrowserBridge();
+const bridge = new BrowserBridge(17777, ({ id, stage, message }) => {
+  const request = id ? ` request=${id}` : "";
+  const detail = message ? ` ${message}` : "";
+  streamDeck.logger.info(`Kick clip stage=${stage}${request}${detail}`);
+});
 try {
   await bridge.start();
   streamDeck.logger.info("Browser companion bridge listening on 127.0.0.1:17777.");

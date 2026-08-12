@@ -29,7 +29,7 @@ test("bridge sends a clip request and resolves the companion result", async () =
       socket.once("open", resolve);
       socket.once("error", reject);
     });
-    socket.send(JSON.stringify({ type: "hello" }));
+    socket.send(JSON.stringify({ type: "hello", version: "1.1.2" }));
     assert.deepEqual(await waitForMessage(socket), { type: "hello-ack" });
     assert.equal(bridge.isReady(), true);
 

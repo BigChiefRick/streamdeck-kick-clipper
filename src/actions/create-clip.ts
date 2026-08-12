@@ -24,6 +24,7 @@ export class CreateClipAction extends SingletonAction<KickClipSettings> {
 
     try {
       const settings = resolveSettings(await ev.action.getSettings());
+      streamDeck.logger.info(`Kick clip key pressed: channel=${settings.channelSlug}`);
       const result = await this.bridge.requestClip({
         channelSlug: settings.channelSlug,
         duration: 30,
