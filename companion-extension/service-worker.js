@@ -172,8 +172,8 @@ async function handleClipCommand(message) {
         };
         if (livestream.vod_id) source.webVideoId = livestream.vod_id;
 
-        const detail = { mode: "command", source, duration: command.duration };
-        if (command.title) detail.title = command.title;
+        const clipTitle = String(command.title || livestream.session_title || "").trim().slice(0, 50);
+        const detail = { mode: "command", source, duration: command.duration, title: clipTitle };
         window.dispatchEvent(new CustomEvent("openClipCreator", { detail }));
 
         const clipDeadline = Date.now() + 50_000;

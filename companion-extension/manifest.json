@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Kick Clip Creator Companion",
   "description": "Lets the Kick Clip Creator Stream Deck action use the moderator's signed-in Kick browser session.",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "minimum_chrome_version": "116",
   "permissions": [
     "alarms",

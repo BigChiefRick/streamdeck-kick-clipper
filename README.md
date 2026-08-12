@@ -27,6 +27,7 @@ Each moderator installs both files from `dist`:
 8. Click the companion extension icon once and confirm it says **Connected to Stream Deck**.
 
 Pressing the Stream Deck key now works while another application, browser tab, or window is focused.
+When the optional clip title is blank, the companion sends Kick the live stream title automatically.
 
 ## Key feedback
 
